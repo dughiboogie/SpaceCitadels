@@ -5,23 +5,19 @@ using UnityEngine;
 
 public class GridGenerator : MonoBehaviour
 {
-    private MapNode firstMapNode;
-
-    private Dictionary<MapNode, System.Object> mapElements = new Dictionary<MapNode, System.Object>();
-
     private float pathSize = 1.0f;
+
+    // Special nodes
+    private MapNode firstMapNode;
+    
+    // Map with ALL the nodes generated in the current map (empty and full)
+    private Dictionary<MapNode, System.Object> mapElements = new Dictionary<MapNode, System.Object>();
 
     private void Awake()
     {
-        // Generate starting planet
         GenerateStartingPlanet();
-
-        // Generate adjacent nodes
-        GenerateCurrentlyAdjacentMapNodes(firstMapNode);
-
-        // Store node values in global list
+        GenerateMapNodesNextToCurrent(firstMapNode);    
     }
-
 
     private void GenerateStartingPlanet()
     {
@@ -34,16 +30,13 @@ public class GridGenerator : MonoBehaviour
         mapElements.Add(firstMapNode, planet);
     }
 
-    /*
-     * Generate the nodes immediately adjacent to the current one
-     */
-    private void GenerateCurrentlyAdjacentMapNodes(MapNode currentMapNode)
+    private void GenerateMapNodesNextToCurrent(MapNode currentMapNode)
     {
-        for(int i = 0; i < 6; i++) {
+        // Generate nodes starting from the right one (x+1,x) clockwise
+        for(int directionIndex = 0; directionIndex < 6; directionIndex++) {
+            var nextMapNodeCoordinates = CalculateNextMapNodeCoordinates(currentMapNode, directionIndex);
 
-            var nextMapNodeCoordinates = CalculateMapNodeCoordinate(currentMapNode, i);
-
-            var angleDeg = 60 * i;
+            var angleDeg = 60 * directionIndex;
             var angleRad = Math.PI / 180 * angleDeg;
             float xUnityCoord = (float)(currentMapNode.XCoordinate + pathSize * Math.Cos(angleRad));
             float zUnityCoord = (float)(currentMapNode.ZCoordinate + pathSize * Math.Sin(angleRad));
@@ -59,7 +52,7 @@ public class GridGenerator : MonoBehaviour
         }
     }
 
-    private (int, int) CalculateMapNodeCoordinate(MapNode currentMapNode, int directionIndex)
+    private (int, int) CalculateNextMapNodeCoordinates(MapNode currentMapNode, int directionIndex)
     {
         int xNodeCoordinate = 0;
         int zNodeCoordinate = 0;
@@ -90,7 +83,6 @@ public class GridGenerator : MonoBehaviour
                 zNodeCoordinate = currentMapNode.ZCoordinate + 1;
                 break;
         }
-
         return (xNodeCoordinate, zNodeCoordinate);
     }
 
