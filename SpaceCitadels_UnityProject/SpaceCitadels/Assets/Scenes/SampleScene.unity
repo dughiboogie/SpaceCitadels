@@ -228,7 +228,7 @@ GameObject:
   - component: {fileID: 723034142}
   - component: {fileID: 723034141}
   m_Layer: 0
-  m_Name: GridGenerator
+  m_Name: MapGenerator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -246,8 +246,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0aa591928106c504185605e169c64ec1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridCenter: {x: 0, y: 0, z: 0}
-  hexSize: 1
 --- !u!4 &723034142
 Transform:
   m_ObjectHideFlags: 0
