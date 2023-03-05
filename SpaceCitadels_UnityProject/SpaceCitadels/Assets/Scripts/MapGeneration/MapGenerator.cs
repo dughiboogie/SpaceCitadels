@@ -37,22 +37,16 @@ public class MapGenerator : MonoBehaviour
         // Start generating map from boss node
         currentElaboratingNode = GenerateMapNode(0, 0, new Vector3(), 0, NodeTypes.BOSS_ROOM);
 
+        LogCurrentMapNodeCoordinates();
+
         // Generate only accessible adjacent node
         GenerateNearbyMapNodes();
-
-        LogListOfMapNodes("Boss room surrounding nodes: ", currentElaboratingNode.surroundingNodes);
-        LogListOfMapNodes("Boss room reachable nodes: ", currentElaboratingNode.surroundingNodes);
-
         MakeRandomNearbyNodesReachable();
-
-        LogListOfMapNodes("Boss room surrounding nodes: ", currentElaboratingNode.surroundingNodes);
-        LogListOfMapNodes("Boss room reachable nodes: ", currentElaboratingNode.surroundingNodes);
 
         // Move to only reachable node
         MoveToNextReachableNode();
 
-        LogListOfMapNodes("Next room surrounding nodes: ", currentElaboratingNode.surroundingNodes);
-        LogListOfMapNodes("Next room reachable nodes: ", currentElaboratingNode.surroundingNodes);
+        LogCurrentMapNodeCoordinates();
 
         // Check if max distance is reached
 
@@ -61,6 +55,22 @@ public class MapGenerator : MonoBehaviour
 
 
         GenerateNearbyMapNodes();
+        MakeRandomNearbyNodesReachable();
+        MoveToNextReachableNode();
+
+        LogCurrentMapNodeCoordinates();
+
+        GenerateNearbyMapNodes();
+        MakeRandomNearbyNodesReachable();
+        MoveToNextReachableNode();
+
+        LogCurrentMapNodeCoordinates();
+
+        GenerateNearbyMapNodes();
+        MakeRandomNearbyNodesReachable();
+        MoveToNextReachableNode();
+
+        LogCurrentMapNodeCoordinates();
 
 
         foreach(var mapNode in mapModel.GetMapNodes()) {
@@ -128,14 +138,15 @@ public class MapGenerator : MonoBehaviour
             foreach(var alreadyGeneratedMapNode in mapModel.GetMapNodes()) {
                 if(alreadyGeneratedMapNode.XCoordinate == nextMapNodeCoordinates.Item1 && alreadyGeneratedMapNode.ZCoordinate == nextMapNodeCoordinates.Item2) {
                     adjacentMapNode = alreadyGeneratedMapNode;
+                    break;
                 }
             }
 
             if(adjacentMapNode == null) {
                 var angleDeg = 60 * directionIndex;
                 var angleRad = Math.PI / 180 * angleDeg;
-                float xUnityCoord = (float)(currentElaboratingNode.XCoordinate + pathSize * Math.Cos(angleRad));
-                float zUnityCoord = (float)(currentElaboratingNode.ZCoordinate + pathSize * Math.Sin(angleRad));
+                float xUnityCoord = (float)(currentElaboratingNode.UnityPosition.x + pathSize * Math.Cos(angleRad));
+                float zUnityCoord = (float)(currentElaboratingNode.UnityPosition.z + pathSize * Math.Sin(angleRad));
 
                 adjacentMapNode = GenerateMapNode(nextMapNodeCoordinates.Item1, nextMapNodeCoordinates.Item2, new Vector3(xUnityCoord, 0, zUnityCoord),
                 currentElaboratingNode.DistanceFromBoss + 1);
@@ -157,13 +168,20 @@ public class MapGenerator : MonoBehaviour
         // If not, set nodes to reachable based on a random roll
         else {
             for(int directionIndex = 0; directionIndex < currentElaboratingNode.surroundingNodes.Count; directionIndex++) {
-                // 40% chance
-                var isNodeReachable = UnityEngine.Random.Range(0, 10) > 3 ? true : false;
 
-                if(isNodeReachable) {
-                    MapNode nextReachableNode = currentElaboratingNode.surroundingNodes[directionIndex];
-                    nextReachableNode.SetNodeType(NodeTypes.REACHABLE);
-                    currentElaboratingNode.reachableNodes.Add(nextReachableNode);
+                // Don't roll for a node that was already elaborated previously
+                if(currentElaboratingNode.surroundingNodes[directionIndex].NodeType == NodeTypes.UNREACHABLE) {
+                    // 40% chance
+                    var isNodeReachable = UnityEngine.Random.Range(0, 10) > 3 ? true : false;
+
+                    if(isNodeReachable) {
+                        MapNode nextReachableNode = currentElaboratingNode.surroundingNodes[directionIndex];
+                        nextReachableNode.SetNodeType(NodeTypes.REACHABLE);
+                        currentElaboratingNode.reachableNodes.Add(nextReachableNode);
+                    }
+                }
+                else {
+                    currentElaboratingNode.reachableNodes.Add(currentElaboratingNode.surroundingNodes[directionIndex]);
                 }
             }
         }
@@ -173,12 +191,18 @@ public class MapGenerator : MonoBehaviour
     {
         var randomNodeRoll = UnityEngine.Random.Range(0, currentElaboratingNode.reachableNodes.Count);
 
-        // make current node previous one
-        MapNode temp = currentElaboratingNode;
+        if(currentElaboratingNode.reachableNodes[randomNodeRoll].NodeType != NodeTypes.REACHABLE ||
+            currentElaboratingNode.reachableNodes[randomNodeRoll] == currentElaboratingNode.PreviouslyVisitedNode) {
+            MoveToNextReachableNode();
+        }
+        else {
+            // make current node previous one
+            MapNode temp = currentElaboratingNode;
 
-        // make next node current elaborating one
-        currentElaboratingNode = currentElaboratingNode.reachableNodes[randomNodeRoll];
-        currentElaboratingNode.PreviouslyVisitedNode = temp;
+            // make next node current elaborating one
+            currentElaboratingNode = currentElaboratingNode.reachableNodes[randomNodeRoll];
+            currentElaboratingNode.PreviouslyVisitedNode = temp;
+        }
     }
 
     private bool IsMapNodePossibleStartingPosition()
@@ -308,13 +332,13 @@ public class MapGenerator : MonoBehaviour
     {
         switch(directionIndex) {
             case 0:
-                return currentMapNode.GetNextNodeBasedOnDirectionCoordinates(1, 0);
+                return currentMapNode.GetNextNodeBasedOnDirectionCoordinates(2, 0);
             case 1:
                 return currentMapNode.GetNextNodeBasedOnDirectionCoordinates(1, -1);
             case 2:
                 return currentMapNode.GetNextNodeBasedOnDirectionCoordinates(-1, -1);
             case 3:
-                return currentMapNode.GetNextNodeBasedOnDirectionCoordinates(-1, 0);
+                return currentMapNode.GetNextNodeBasedOnDirectionCoordinates(-2, 0);
             case 4:
                 return currentMapNode.GetNextNodeBasedOnDirectionCoordinates(-1, +1);
             case 5:
@@ -322,6 +346,12 @@ public class MapGenerator : MonoBehaviour
             default:
                 throw new NotImplementedException("Very unlikely to happen");
         }
+    }
+
+    private void LogCurrentMapNodeCoordinates()
+    {
+        Debug.Log("X coordinate: " + currentElaboratingNode.XCoordinate);
+        Debug.Log("Z coordinate: " + currentElaboratingNode.ZCoordinate);
     }
 
     private void LogListOfMapNodes(String message, ICollection<MapNode> mapNodes)
