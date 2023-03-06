@@ -13,6 +13,8 @@ public class MapGenerator : MonoBehaviour
     private List<MapNode> alreadyWalkedNodes = new List<MapNode>();
 
     [SerializeField]
+    private int mapGenerationIterations = 3;
+    [SerializeField]
     private int maxDistanceFromBoss = 2;
     [SerializeField]
     private int startingDistanceFromBoss = 1;
@@ -37,40 +39,19 @@ public class MapGenerator : MonoBehaviour
         // Start generating map from boss node
         currentElaboratingNode = GenerateMapNode(0, 0, new Vector3(), 0, NodeTypes.BOSS_ROOM);
 
-        LogCurrentMapNodeCoordinates();
+        for(int nodeIndex = 0; nodeIndex < mapGenerationIterations; nodeIndex++) {
+            LogCurrentMapNodeCoordinates("Current elaborating node coordinates: ");
+            GenerateNearbyMapNodes();
+            MakeRandomNearbyNodesReachable();
 
-        // Generate only accessible adjacent node
-        GenerateNearbyMapNodes();
-        MakeRandomNearbyNodesReachable();
+            // Check if max distance is reached
 
-        // Move to only reachable node
-        MoveToNextReachableNode();
-
-        LogCurrentMapNodeCoordinates();
-
-        // Check if max distance is reached
-
-        // Check if starting distance from boss is reached
+            // Check if starting distance from boss is reached
 
 
+            MoveToNextReachableNode();
+        }
 
-        GenerateNearbyMapNodes();
-        MakeRandomNearbyNodesReachable();
-        MoveToNextReachableNode();
-
-        LogCurrentMapNodeCoordinates();
-
-        GenerateNearbyMapNodes();
-        MakeRandomNearbyNodesReachable();
-        MoveToNextReachableNode();
-
-        LogCurrentMapNodeCoordinates();
-
-        GenerateNearbyMapNodes();
-        MakeRandomNearbyNodesReachable();
-        MoveToNextReachableNode();
-
-        LogCurrentMapNodeCoordinates();
 
 
         foreach(var mapNode in mapModel.GetMapNodes()) {
@@ -181,7 +162,9 @@ public class MapGenerator : MonoBehaviour
                     }
                 }
                 else {
-                    currentElaboratingNode.reachableNodes.Add(currentElaboratingNode.surroundingNodes[directionIndex]);
+                    if(currentElaboratingNode.surroundingNodes[directionIndex].NodeType != NodeTypes.BOSS_ROOM) {
+                        currentElaboratingNode.reachableNodes.Add(currentElaboratingNode.surroundingNodes[directionIndex]);
+                    }
                 }
             }
         }
@@ -348,8 +331,9 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    private void LogCurrentMapNodeCoordinates()
+    private void LogCurrentMapNodeCoordinates(string message)
     {
+        Debug.Log(message);
         Debug.Log("X coordinate: " + currentElaboratingNode.XCoordinate);
         Debug.Log("Z coordinate: " + currentElaboratingNode.ZCoordinate);
     }
