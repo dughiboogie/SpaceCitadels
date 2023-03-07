@@ -23,6 +23,8 @@ public class MapNode
 
     private NodeTypes nodeType;
 
+    private bool hasAlreadyBeenElaborated = false;
+
     #region Properties
 
     public int XCoordinate => xCoordinate;
@@ -50,6 +52,12 @@ public class MapNode
     }
 
     public NodeTypes NodeType => nodeType;
+
+    public bool HasAlreadyBeenElaborated
+    {
+        get => hasAlreadyBeenElaborated;
+        set => hasAlreadyBeenElaborated = value;
+    }
 
     #endregion
 

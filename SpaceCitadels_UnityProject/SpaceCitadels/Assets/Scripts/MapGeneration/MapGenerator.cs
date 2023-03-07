@@ -6,31 +6,22 @@ public class MapGenerator : MonoBehaviour
 {
     private MapModel mapModel;
 
-    private float pathSize = 1.0f;
+    private float pathSize = 10.0f;
 
     private MapNode currentElaboratingNode;
 
-    private List<MapNode> alreadyWalkedNodes = new List<MapNode>();
+    private List<GameObject> possibleStartingNodes = new List<GameObject>();
 
+    [SerializeField]
+    private Transform mapElementsParent;
+    [SerializeField]
+    private MapNodeView mapNodePrefab;
     [SerializeField]
     private int mapGenerationIterations = 3;
     [SerializeField]
     private int maxDistanceFromBoss = 2;
     [SerializeField]
     private int startingDistanceFromBoss = 1;
-
-    /*
-    // Special nodes
-    private MapNode firstMapNode;
-    private MapNode currentWorkingNode;
-    private MapNode previousNode;
-    
-    */
-
-    // List of ALL the nodes generated in the current map (empty and full)
-    // private List<MapNode> mapNodes = new List<MapNode>();
-
-    // Dictionary<MapNode, GameObject> reachableNodes = new Dictionary<MapNode, GameObject>();
 
     private void Awake()
     {
@@ -40,62 +31,52 @@ public class MapGenerator : MonoBehaviour
         currentElaboratingNode = GenerateMapNode(0, 0, new Vector3(), 0, NodeTypes.BOSS_ROOM);
 
         for(int nodeIndex = 0; nodeIndex < mapGenerationIterations; nodeIndex++) {
-            LogCurrentMapNodeCoordinates("Current elaborating node coordinates: ");
-            GenerateNearbyMapNodes();
-            MakeRandomNearbyNodesReachable();
+            if(IsMapNodeAtMaxDistanceFromBoss()) {
+                MoveToPreviousVisitedNode();
+            }
+            else {
+                GenerateNearbyMapNodes();
+                MakeRandomNearbyNodesReachable();
 
-            // Check if max distance is reached
+                currentElaboratingNode.HasAlreadyBeenElaborated = true;
 
-            // Check if starting distance from boss is reached
-
-
-            MoveToNextReachableNode();
+                MoveToNextNodeToElaborate();
+            }
         }
 
-
-
         foreach(var mapNode in mapModel.GetMapNodes()) {
+
+            GameObject mapNodeGameObject = Instantiate(mapNodePrefab.gameObject, mapElementsParent, true);
+            mapNodeGameObject.transform.position = mapNode.UnityPosition;
+
+            mapNodeGameObject.GetComponent<MapNodeView>().MapNodeData = mapNode;
+
+            /*
             GameObject reachableNodePlaceholder = GameObject.CreatePrimitive(PrimitiveType.Cube);
             reachableNodePlaceholder.transform.position = mapNode.UnityPosition;
             reachableNodePlaceholder.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+            */
 
             foreach(var reachableMapNode in mapNode.reachableNodes) {
                 Debug.DrawLine(mapNode.UnityPosition, reachableMapNode.UnityPosition, Color.yellow, 300);
             }
 
             if(mapNode.NodeType == NodeTypes.BOSS_ROOM) {
-                reachableNodePlaceholder.GetComponent<Renderer>().material.SetColor("_Color", Color.red);
+                mapNodeGameObject.GetComponent<Renderer>().material.SetColor("_Color", Color.red);
             }
 
             if(mapNode.NodeType == NodeTypes.UNREACHABLE) {
-                reachableNodePlaceholder.GetComponent<Renderer>().material.SetColor("_Color", Color.black);
+                mapNodeGameObject.GetComponent<Renderer>().material.SetColor("_Color", Color.black);
+            }
+
+            if(IsMapNodePossibleStartingPosition(mapNode)) {
+                possibleStartingNodes.Add(mapNodeGameObject);
             }
         }
 
-        // In case everything is right, then
-        // Generate adjacent nodes
+        var startingNodeIndex = UnityEngine.Random.Range(0, possibleStartingNodes.Count);
+        possibleStartingNodes[startingNodeIndex].GetComponent<Renderer>().material.SetColor("_Color", Color.green);
 
-        // Select another node
-
-        // Add this node to walked nodes
-
-        // Set next node to currentElaboratingNode
-
-        // Increase distance from boss by 1
-
-        /*
-        GenerateStartingPlanet();
-
-        // Generate reachable nodes nearby
-        GenerateMapNodesNextToCurrent(firstMapNode);
-        RollForNodeIsReachable();
-        SpawnReachableNodes();
-
-        // Move to random reachable node
-        previousNode = currentWorkingNode;
-        currentWorkingNode = ChooseRandomReachableNode();
-        GenerateMapNodesNextToCurrent(currentWorkingNode);
-        */
     }
 
     private MapNode GenerateMapNode(int xCoordinate, int zCoordinate, Vector3 unityPosition, int distanceFromBoss, NodeTypes nodeType = NodeTypes.UNREACHABLE)
@@ -153,7 +134,7 @@ public class MapGenerator : MonoBehaviour
                 // Don't roll for a node that was already elaborated previously
                 if(currentElaboratingNode.surroundingNodes[directionIndex].NodeType == NodeTypes.UNREACHABLE) {
                     // 40% chance
-                    var isNodeReachable = UnityEngine.Random.Range(0, 10) > 3 ? true : false;
+                    var isNodeReachable = UnityEngine.Random.Range(0, 10) > 6 ? true : false;
 
                     if(isNodeReachable) {
                         MapNode nextReachableNode = currentElaboratingNode.surroundingNodes[directionIndex];
@@ -170,13 +151,21 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    private void MoveToNextReachableNode()
+    private void MoveToNextNodeToElaborate()
     {
+        // No reachable nodes near current one
+        if(currentElaboratingNode.reachableNodes.Count == 0) {
+            return;
+        }
+       
         var randomNodeRoll = UnityEngine.Random.Range(0, currentElaboratingNode.reachableNodes.Count);
 
-        if(currentElaboratingNode.reachableNodes[randomNodeRoll].NodeType != NodeTypes.REACHABLE ||
-            currentElaboratingNode.reachableNodes[randomNodeRoll] == currentElaboratingNode.PreviouslyVisitedNode) {
-            MoveToNextReachableNode();
+        // Don't move to not reachable nodes or previously visited ones
+        /*
+         * || currentElaboratingNode.reachableNodes[randomNodeRoll] == currentElaboratingNode.PreviouslyVisitedNode
+         */
+        if(currentElaboratingNode.reachableNodes[randomNodeRoll].NodeType != NodeTypes.REACHABLE) {
+            MoveToNextNodeToElaborate();
         }
         else {
             // make current node previous one
@@ -186,11 +175,23 @@ public class MapGenerator : MonoBehaviour
             currentElaboratingNode = currentElaboratingNode.reachableNodes[randomNodeRoll];
             currentElaboratingNode.PreviouslyVisitedNode = temp;
         }
+
+        // Keep searching for a node that hasn't been elaborated yet
+        /*
+        if(currentElaboratingNode.HasAlreadyBeenElaborated) {
+            MoveToNextNodeToElaborate();
+        }
+        */
     }
 
-    private bool IsMapNodePossibleStartingPosition()
+    private void MoveToPreviousVisitedNode()
     {
-        if(currentElaboratingNode.DistanceFromBoss == startingDistanceFromBoss) {
+        currentElaboratingNode = currentElaboratingNode.PreviouslyVisitedNode;
+    }
+
+    private bool IsMapNodePossibleStartingPosition(MapNode mapNode)
+    {
+        if(mapNode.DistanceFromBoss == startingDistanceFromBoss) {
             return true;
         }
         return false;
