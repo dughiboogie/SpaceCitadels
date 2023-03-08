@@ -17,6 +17,8 @@ public class MapGenerator : MonoBehaviour
     [SerializeField]
     private MapNodeView mapNodePrefab;
     [SerializeField]
+    private Transform player;
+    [SerializeField]
     private int mapGenerationIterations = 3;
     [SerializeField]
     private int maxDistanceFromBoss = 2;
@@ -25,37 +27,33 @@ public class MapGenerator : MonoBehaviour
 
     private void Awake()
     {
+        GenerateNewMap();
+    }
+
+    private void GenerateNewMap()
+    {
         mapModel = new MapModel();
+        GenerateMapNodes();
+        InstantiateMapNodesGameObjects();
+        SetStartingPosition();
+    }
 
-        // Start generating map from boss node
-        currentElaboratingNode = GenerateMapNode(0, 0, new Vector3(), 0, NodeTypes.BOSS_ROOM);
+    private void SetStartingPosition()
+    {
+        var startingNodeIndex = UnityEngine.Random.Range(0, possibleStartingNodes.Count);
+        possibleStartingNodes[startingNodeIndex].GetComponent<Renderer>().material.SetColor("_Color", Color.green);
 
-        for(int nodeIndex = 0; nodeIndex < mapGenerationIterations; nodeIndex++) {
-            if(IsMapNodeAtMaxDistanceFromBoss()) {
-                MoveToPreviousVisitedNode();
-            }
-            else {
-                GenerateNearbyMapNodes();
-                MakeRandomNearbyNodesReachable();
+        player.position = possibleStartingNodes[startingNodeIndex].transform.position;
+    }
 
-                currentElaboratingNode.HasAlreadyBeenElaborated = true;
-
-                MoveToNextNodeToElaborate();
-            }
-        }
-
+    private void InstantiateMapNodesGameObjects()
+    {
         foreach(var mapNode in mapModel.GetMapNodes()) {
 
             GameObject mapNodeGameObject = Instantiate(mapNodePrefab.gameObject, mapElementsParent, true);
             mapNodeGameObject.transform.position = mapNode.UnityPosition;
 
             mapNodeGameObject.GetComponent<MapNodeView>().MapNodeData = mapNode;
-
-            /*
-            GameObject reachableNodePlaceholder = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            reachableNodePlaceholder.transform.position = mapNode.UnityPosition;
-            reachableNodePlaceholder.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-            */
 
             foreach(var reachableMapNode in mapNode.reachableNodes) {
                 Debug.DrawLine(mapNode.UnityPosition, reachableMapNode.UnityPosition, Color.yellow, 300);
@@ -73,13 +71,29 @@ public class MapGenerator : MonoBehaviour
                 possibleStartingNodes.Add(mapNodeGameObject);
             }
         }
-
-        var startingNodeIndex = UnityEngine.Random.Range(0, possibleStartingNodes.Count);
-        possibleStartingNodes[startingNodeIndex].GetComponent<Renderer>().material.SetColor("_Color", Color.green);
-
     }
 
-    private MapNode GenerateMapNode(int xCoordinate, int zCoordinate, Vector3 unityPosition, int distanceFromBoss, NodeTypes nodeType = NodeTypes.UNREACHABLE)
+    private void GenerateMapNodes()
+    {
+        // Start generating map from boss node
+        currentElaboratingNode = GenerateIndividualMapNode(0, 0, new Vector3(), 0, NodeTypes.BOSS_ROOM);
+
+        for(int nodeIndex = 0; nodeIndex < mapGenerationIterations; nodeIndex++) {
+            if(IsMapNodeAtMaxDistanceFromBoss()) {
+                MoveToPreviousVisitedNode();
+            }
+            else {
+                GenerateNearbyMapNodes();
+                MakeRandomNearbyNodesReachable();
+
+                currentElaboratingNode.HasAlreadyBeenElaborated = true;
+
+                MoveToNextNodeToElaborate();
+            }
+        }
+    }
+
+    private MapNode GenerateIndividualMapNode(int xCoordinate, int zCoordinate, Vector3 unityPosition, int distanceFromBoss, NodeTypes nodeType = NodeTypes.UNREACHABLE)
     {
         MapNode newMapNode = new MapNode(xCoordinate, zCoordinate, unityPosition);
         newMapNode.DistanceFromBoss = distanceFromBoss;
@@ -110,7 +124,7 @@ public class MapGenerator : MonoBehaviour
                 float xUnityCoord = (float)(currentElaboratingNode.UnityPosition.x + pathSize * Math.Cos(angleRad));
                 float zUnityCoord = (float)(currentElaboratingNode.UnityPosition.z + pathSize * Math.Sin(angleRad));
 
-                adjacentMapNode = GenerateMapNode(nextMapNodeCoordinates.Item1, nextMapNodeCoordinates.Item2, new Vector3(xUnityCoord, 0, zUnityCoord),
+                adjacentMapNode = GenerateIndividualMapNode(nextMapNodeCoordinates.Item1, nextMapNodeCoordinates.Item2, new Vector3(xUnityCoord, 0, zUnityCoord),
                 currentElaboratingNode.DistanceFromBoss + 1);
             }
 
@@ -204,113 +218,6 @@ public class MapGenerator : MonoBehaviour
         }
         return false;
     }
-
-
-
-    /*
-
-    private MapNode ChooseRandomReachableNode()
-    {
-        MapNode chosenNode = null;
-        var randomNodeRoll = UnityEngine.Random.Range(0, reachableNodes.Count);
-
-        int currentNodeIndex = 0;
-
-        foreach(MapNode current in reachableNodes.Keys) {
-            if(currentNodeIndex == randomNodeRoll) {
-                chosenNode = current;
-
-                // Just for debugging
-                reachableNodes[chosenNode].GetComponent<Renderer>().material.SetColor("_Color", Color.red);
-            }
-            
-            currentNodeIndex++;
-        }
-
-        return chosenNode;
-    }
-
-    private void SpawnReachableNodes()
-    {
-        Dictionary<MapNode, GameObject> mapWithNodePlaceholder = new Dictionary<MapNode, GameObject>();
-
-        foreach(MapNode current in reachableNodes.Keys) {
-            if(reachableNodes[current] == null) {
-                GameObject reachableNodePlaceholder = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                reachableNodePlaceholder.transform.position = current.UnityPosition;
-                reachableNodePlaceholder.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-
-                mapWithNodePlaceholder.Add(current, reachableNodePlaceholder);
-            }
-        }
-
-        reachableNodes = mapWithNodePlaceholder;
-    }
-
-    private void RollForNodeIsReachable()
-    {
-        Dictionary<MapNode, GameObject> actualReachableNodes = new Dictionary<MapNode, GameObject>();
-
-        foreach(MapNode current in mapNodes) {
-            var reachabilityChance = UnityEngine.Random.Range(0, 5);
-
-            // 40% chance
-            if(reachabilityChance > 1) {
-                actualReachableNodes.Add(current, null);
-            }
-        }
-
-        reachableNodes = actualReachableNodes;
-    }
-
-    private void GenerateStartingPlanet()
-    {
-        firstMapNode = new MapNode(0, 0, 0, 0);
-        mapNodes.Add(firstMapNode);
-        reachableNodes.Add(firstMapNode, null);
-        previousNode = firstMapNode;
-        currentWorkingNode = firstMapNode;
-        
-        SpawnReachableNodes();
-        reachableNodes.Clear();
-    }
-
-    private GameObject SpawnPlanet(Vector3 planetCenter)
-    {
-        GameObject planet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        planet.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-        planet.transform.position = planetCenter;
-
-        return planet;
-    }
-
-    private void GenerateMapNodesNextToCurrent(MapNode currentMapNode)
-    {
-        reachableNodes.Clear();
-
-        // Generate nodes starting from the right one (x+1,x) clockwise
-        for(int directionIndex = 0; directionIndex < 6; directionIndex++) {
-            var nextMapNodeCoordinates = CalculateNextMapNodeCoordinates(currentMapNode, directionIndex);
-
-            var angleDeg = 60 * directionIndex;
-            var angleRad = Math.PI / 180 * angleDeg;
-            float xUnityCoord = (float)(currentMapNode.XCoordinate + pathSize * Math.Cos(angleRad));
-            float zUnityCoord = (float)(currentMapNode.ZCoordinate + pathSize * Math.Sin(angleRad));
-
-            MapNode newMapNode = new MapNode(nextMapNodeCoordinates.Item1, nextMapNodeCoordinates.Item2, xUnityCoord, zUnityCoord);
-            mapNodes.Add(newMapNode);
-            reachableNodes.Add(newMapNode, null);
-        }
-
-        // Draw grid lines for 5 minutes, just for visual reference while prototyping
-        foreach(var mapElement in reachableNodes.Keys) {
-            if(!mapElement.Equals(currentMapNode) || !mapElement.Equals(previousNode)) {
-                Debug.DrawLine(currentMapNode.UnityPosition, mapElement.UnityPosition, Color.yellow, 300);
-            }
-        }
-    }
-
-    */
 
     private (int, int) CalculateNextMapNodeCoordinates(MapNode currentMapNode, int directionIndex)
     {
