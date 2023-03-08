@@ -478,6 +478,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 546832349}
+  - component: {fileID: 546832350}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -500,6 +501,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &546832350
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 546832348}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b70310b40eccf0a4ca94cc4200078e97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -625,7 +638,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mapElementsParent: {fileID: 881358696}
   mapNodePrefab: {fileID: 4485659752884401576, guid: 6682dd2115a9a214f8a801bb15670c49, type: 3}
-  player: {fileID: 546832349}
+  player: {fileID: 546832350}
   mapGenerationIterations: 1000
   maxDistanceFromBoss: 100
   startingDistanceFromBoss: 5

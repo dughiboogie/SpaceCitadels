@@ -4,20 +4,16 @@ using UnityEngine;
 
 public class MapGenerator : MonoBehaviour
 {
-    private MapModel mapModel;
-
     private float pathSize = 10.0f;
 
     private MapNode currentElaboratingNode;
 
-    private List<GameObject> possibleStartingNodes = new List<GameObject>();
+    private List<MapNodeView> possibleStartingNodes = new List<MapNodeView>();
 
     [SerializeField]
     private Transform mapElementsParent;
     [SerializeField]
     private MapNodeView mapNodePrefab;
-    [SerializeField]
-    private Transform player;
     [SerializeField]
     private int mapGenerationIterations = 3;
     [SerializeField]
@@ -32,7 +28,7 @@ public class MapGenerator : MonoBehaviour
 
     private void GenerateNewMap()
     {
-        mapModel = new MapModel();
+        MapModel.Clear();
         GenerateMapNodes();
         InstantiateMapNodesGameObjects();
         SetStartingPosition();
@@ -43,17 +39,19 @@ public class MapGenerator : MonoBehaviour
         var startingNodeIndex = UnityEngine.Random.Range(0, possibleStartingNodes.Count);
         possibleStartingNodes[startingNodeIndex].GetComponent<Renderer>().material.SetColor("_Color", Color.green);
 
-        player.position = possibleStartingNodes[startingNodeIndex].transform.position;
+        PlayerMovement.instance.transform.position = possibleStartingNodes[startingNodeIndex].MapNodeData.UnityPosition;
+        PlayerMovement.instance.CurrentMapNodeView = possibleStartingNodes[startingNodeIndex];
     }
 
     private void InstantiateMapNodesGameObjects()
     {
-        foreach(var mapNode in mapModel.GetMapNodes()) {
+        foreach(var mapNode in MapModel.GetMapNodes()) {
 
             GameObject mapNodeGameObject = Instantiate(mapNodePrefab.gameObject, mapElementsParent, true);
             mapNodeGameObject.transform.position = mapNode.UnityPosition;
 
-            mapNodeGameObject.GetComponent<MapNodeView>().MapNodeData = mapNode;
+            MapNodeView mapNodeView = mapNodeGameObject.GetComponent<MapNodeView>();
+            mapNodeView.MapNodeData = mapNode;
 
             foreach(var reachableMapNode in mapNode.reachableNodes) {
                 Debug.DrawLine(mapNode.UnityPosition, reachableMapNode.UnityPosition, Color.yellow, 300);
@@ -68,7 +66,7 @@ public class MapGenerator : MonoBehaviour
             }
 
             if(IsMapNodePossibleStartingPosition(mapNode)) {
-                possibleStartingNodes.Add(mapNodeGameObject);
+                possibleStartingNodes.Add(mapNodeView);
             }
         }
     }
@@ -99,7 +97,7 @@ public class MapGenerator : MonoBehaviour
         newMapNode.DistanceFromBoss = distanceFromBoss;
         newMapNode.SetNodeType(nodeType);
 
-        mapModel.AddMapNode(newMapNode);
+        MapModel.AddMapNode(newMapNode);
         return newMapNode;
     }
 
@@ -111,7 +109,7 @@ public class MapGenerator : MonoBehaviour
             var nextMapNodeCoordinates = CalculateNextMapNodeCoordinates(currentElaboratingNode, directionIndex);
 
             // If the coordinates for the map node to generate are already present in the map model, use the MapNode stored there
-            foreach(var alreadyGeneratedMapNode in mapModel.GetMapNodes()) {
+            foreach(var alreadyGeneratedMapNode in MapModel.GetMapNodes()) {
                 if(alreadyGeneratedMapNode.XCoordinate == nextMapNodeCoordinates.Item1 && alreadyGeneratedMapNode.ZCoordinate == nextMapNodeCoordinates.Item2) {
                     adjacentMapNode = alreadyGeneratedMapNode;
                     break;

@@ -2,17 +2,22 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MapModel
+public static class MapModel
 {
-    private List<MapNode> generatedMapNodes = new List<MapNode>();
+    private static List<MapNode> generatedMapNodes = new List<MapNode>();
 
-    public List<MapNode> GetMapNodes()
+    public static List<MapNode> GetMapNodes()
     {
         return generatedMapNodes;
     }
 
-    public void AddMapNode(MapNode mapNode)
+    public static void AddMapNode(MapNode mapNode)
     {
         generatedMapNodes.Add(mapNode);
+    }
+
+    public static void Clear()
+    {
+        generatedMapNodes.Clear();
     }
 }
